@@ -180,6 +180,28 @@ fi
 AC_SUBST(ibnetdisc_api_version)
 dnl End libibnetdisc stuff
 
+dnl Begin determine the systemd use and location
+use_systemd=`cat /proc/1/comm`
+with_sysemdsystemunitdir="no"
+specfile_install="%{_sysconfdir}/init.d/rdma-ndd"
+if test "x$use_systemd" == xsystemd; then
+	def_systemdsystemunitdir="lib/systemd/system"
+	AC_ARG_WITH([systemdsystemunitdir],
+			AS_HELP_STRING([--with-systemdsystemunitdir=DIR],
+					[Directory for systemd service files]),
+			[with_systemdsystemunitdir=$withval],
+			[with_sysemdsystemunitdir=$def_systemdsystemunitdir])
+	if test "x$with_sysemdsystemunitdir" != xno; then
+		AC_SUBST(SYSTEMD_SYSTEM_UNIT_DIR, [$with_sysemdsystemunitdir])
+		AC_SUBST(SYSTEMD_BUILD_REQUIRES, "BuildRequires: systemd")
+		specfile_install="%{_prefix}/lib/systemd/system/rdma-ndd.service"
+	fi
+fi
+AM_CONDITIONAL(SYSTEMD_SYSTEM_UNIT_DIR, test "x$with_sysemdsystemunitdir" != xno)
+AC_SUBST(SPEC_FILE_RDMA_NDD_INSTALL, $specfile_install)
+dnl End systemd stuff
+
+
 dnl with or with rdma-ndd
 AC_MSG_CHECKING(for --enable-rdma-ndd)
 AC_ARG_ENABLE(rdma-ndd,
@@ -212,7 +234,9 @@ AC_SUBST(DEFAULT_STOP, $default_stop)
 
 AS_IF([test x$rdmandd = xyes], [
     PKG_CHECK_MODULES([UDEV], [libudev])
-    AC_CONFIG_FILES([doc/man/rdma-ndd.8 etc/rdma-ndd.init])
+    AC_CONFIG_FILES([doc/man/rdma-ndd.8 \
+			etc/rdma-ndd.init \
+			etc/rdma-ndd.service])
     AC_SUBST([UDEV_CFLAGS])
     AC_SUBST([UDEV_LIBS])
     if test "$with_udev" = "yes"; then
